@@ -44,6 +44,8 @@ homicide_df <-
          victim_race %in% c("Black", "White")) %>%
   select(city_state, resolved, victim_age, victim_race, victim_sex)
 
+# by default, R will remove missing values (the whole row) when we want
+# to run a regression model, unless we make it some unknown category...
 ```
 
 Starting with one city
@@ -96,4 +98,38 @@ model_results_df %>%
   geom_errorbar(aes(ymin = CI_lower, ymax = CI_upper)) +
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ```
+
+### Problem 2 and 3 tips
+
+```{r}
+# child birthweight data for problem 2, deliberately open-ended
+# use your best educated guess for the variables you decide to include your model
+# you CAN do model selection, but maybe go more so for the literature...
+
+# Two models, the first one is simple, the second with all the interactions 
+# is a little more complicated...
+
+# for the interaction term, you do not need to code for the main effect 
+# -- you can JUST code for the interaction e.g. the three way interaction, 
+# it will show you all the main AND the two-way interactions
+# ^ check the screen cast!!
+
+# workflow for cross-validation -- go back to the lecture maybe?
+# looking at the residuals when cross-validating
+
+# scatterplot with gestational period and birthweight
+```
+
+More about problem 3
+
+```{r}
+# central park weather dataset, getting rid of Waiki and Wtaerhole
+# max temp and min temp scatterplot, we are interested in the r^2
+
+# log(beta0*beta1)
+# fit a model using the data and compute the adjusted r^2 using broom::glance()
+# then use broom::tidy() to get all the coefficients to be able to multiply them
+# AFTER you get the process, use bootstrapping
+```
+
 
