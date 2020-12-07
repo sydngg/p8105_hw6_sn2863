@@ -1,7 +1,7 @@
 ---
-title: "p8106_hw6_sn2863"
+title: "P8105 Homework 6 - Linear Models"
 author: "Sydney Ng"
-date: "11/24/2020"
+date: "due December 9, 2020 at 10:00 PM ET"
 output: github_document
 ---
 
@@ -9,6 +9,8 @@ output: github_document
 library(tidyverse)
 library(modelr)
 library(p8105.datasets)
+library(purrr)
+library(mgcv)
 
 knitr::opts_chunk$set(
   fig.width = 8,
@@ -28,7 +30,9 @@ scale_colour_discrete = scale_color_viridis_d
 scale_fill_discrete = scale_fill_viridis_d
 ```
 
-```{r}
+## Problem 1
+
+```{r message=FALSE, warning=FALSE}
 homicide_df <-
   read_csv("./homicide-data.csv") %>%
   mutate(
@@ -99,28 +103,155 @@ model_results_df %>%
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ```
 
-### Problem 2 and 3 tips
 
-```{r}
-# child birthweight data for problem 2, deliberately open-ended
-# use your best educated guess for the variables you decide to include your model
-# you CAN do model selection, but maybe go more so for the literature...
+## Problem 2
 
-# Two models, the first one is simple, the second with all the interactions 
-# is a little more complicated...
+In my linear regression model, we are using 
 
-# for the interaction term, you do not need to code for the main effect 
-# -- you can JUST code for the interaction e.g. the three way interaction, 
-# it will show you all the main AND the two-way interactions
-# ^ check the screen cast!!
+* `fincome` and `mrace` because SES and race are common confounders in epidemiological studies. Since mother's race is categorical, dummy variables are created in the regression and "White" is treated as the reference category.
+* `catbmi` because previous studies show that underweight and obese mothers significantly influence baby birthweight; I made `ppbmi` into a categorical variable using the standard cut-offs for underweight and obese categories. Normal/overweight is treated as a single reference category.
+* `gaweeks` because how far along into the pregnancy (e.g., premature births) can influence baby birthweight.
+* `malform` because it is defined as the presence of malformations that could affect weight.
+* and `momage` because higher age is associated with risk of lower birthweight.
 
-# workflow for cross-validation -- go back to the lecture maybe?
-# looking at the residuals when cross-validating
+I decided not to include variables `ppwt` and `mheight` because both weight and height get factored into BMI. I also debated including `parity` since nulliparous women are more likely to have lower birthweight babies, but also decided against this because it could be correlated with age (i.e., the older the woman is, the more likely she will not be nulliparous especially if she appears in this specific dataset).
 
-# scatterplot with gestational period and birthweight
+```{r message=FALSE}
+birthweight_df <-
+  read_csv("./birthweight.csv") %>%
+  mutate(
+    babysex = if_else(babysex == 1, "Male", "Female"), # no missing values
+    mrace = case_when(mrace == 1 ~ "White", mrace == 2 ~ "Black",
+                      mrace == 3 ~ "Asian", mrace == 4 ~ "Puerto Rican",
+                      mrace == 8 ~ "Other"),
+    frace = case_when(frace == 1 ~ "White", frace == 2 ~ "Black",
+                      frace == 3 ~ "Asian", frace == 4 ~ "Puerto Rican",
+                      frace == 8 ~ "Other", frace == 9 ~ "Unknown"),
+    malform = if_else(malform == 1, "Present", "Absent"),
+    mrace = as.factor(mrace),
+    mrace = relevel(mrace, ref = "White"),
+    catbmi = case_when(ppbmi < 18.5 ~ "Underweight",
+                       ppbmi > 30 ~ "Obese",
+                       ppbmi <= 30 & ppbmi >= 18.5 ~ "Normal/Overweight"),
+    catbmi = as.factor(catbmi),
+    catbmi = relevel(catbmi, ref = "Normal/Overweight")
+  ) %>%
+  select(-ppbmi)
+
+my_model <- glm(bwt ~ 
+                  fincome + mrace + catbmi + momage + gaweeks + malform + smoken,
+    data = birthweight_df,
+    family = gaussian) 
+
+my_model %>%
+  broom::tidy() %>%
+  mutate(
+    CI_lower = estimate - 1.96*std.error,
+    CI_upper = estimate + 1.96*std.error
+  ) %>%
+  select(term, estimate, starts_with("CI")) %>%
+  knitr::kable(digits = 3)
 ```
 
-More about problem 3
+Adding predictions and residuals
+
+```{r}
+my_pred <- add_predictions(birthweight_df, my_model) %>%
+  add_residuals(my_model) %>%
+  select(fincome, mrace, catbmi, momage, gaweeks, malform, smoken, pred, resid)
+
+my_pred %>%
+  ggplot(aes(x = pred, y = resid)) +
+  geom_point(alpha = 0.5) +
+  labs(
+    title = "Residuals vs Predicted Values",
+    x = "Predicted Birthweight (grams)",
+    y = "Residual",
+    caption = "A plot of model residuals against fitted values of baby birthweights including \nfamily income, mother race, BMI, age, gestational age, malformatons, and smoking.")
+```
+
+
+#### Model including length at birth and gestational age
+```{r}
+model2 <- glm(bwt ~ blength + gaweeks,
+    data = birthweight_df,
+    family = gaussian) 
+
+model2 %>%
+  broom::tidy() %>%
+  mutate(
+    CI_lower = estimate - 1.96*std.error,
+    CI_upper = estimate + 1.96*std.error
+  ) %>%
+  select(term, estimate, starts_with("CI")) %>%
+  knitr::kable(digits = 3)
+```
+
+
+#### Modeling including head circumference, length, sex, and all interactions (including the three-way interaction) 
+
+```{r}
+model3 <- glm(bwt ~ bhead*blength*babysex,
+    data = birthweight_df,
+    family = gaussian) 
+
+model3 %>%
+  broom::tidy() %>%
+  mutate(
+    CI_lower = estimate - 1.96*std.error,
+    CI_upper = estimate + 1.96*std.error
+  ) %>%
+  select(term, estimate, starts_with("CI")) %>%
+  knitr::kable(digits = 3)
+```
+
+#### Comparing models using Cross-Validation
+```{r message = FALSE}
+# splitting training and testing data by 80%/20%
+train_df = sample_frac(birthweight_df, .80)
+test_df = anti_join(birthweight_df, train_df)
+
+crossval_df <- crossv_mc(birthweight_df, 100) %>%
+  mutate(
+    train = map(train, as_tibble),
+    test = map(test, as_tibble))
+
+crossval_df <-
+  crossval_df %>%
+    mutate(
+      my_mod = map(train, 
+                   ~glm(bwt ~ fincome + mrace + catbmi + momage + gaweeks +
+                          malform + smoken, family = gaussian, data = .x)),
+      mod_2 = map(train, ~glm(bwt ~ blength + gaweeks, family = gaussian, 
+                              data = .x)),
+      mod_3 = map(train, ~glm(bwt ~ bhead*blength*babysex, family = gaussian,
+                              data = .x)))%>% 
+    mutate(
+      rmse_my_mod = map2_dbl(my_mod, test, ~rmse(model = .x, data = .y)),
+      rmse_mod_2 = map2_dbl(mod_2, test, ~rmse(model = .x, data = .y)),
+      rmse_mod_3 = map2_dbl(mod_3, test, ~rmse(model = .x, data = .y))) %>% 
+  select(starts_with("rmse")) %>% 
+  pivot_longer(
+    everything(),
+    names_to = "model", 
+    values_to = "rmse",
+    names_prefix = "rmse_") %>% 
+  mutate(model = fct_inorder(model))
+
+crossval_df %>% 
+  ggplot(aes(x = model, y = rmse)) +
+  geom_violin(aes(fill = model, alpha = 0.5)) +
+  theme(legend.position = "none") +
+  labs(
+    title = "Violin Plot Comparing RMSE of Models Predicting Baby Birthweight",
+    x = "Model",
+    y = "RMSE",
+    caption = "Comparing my model, Model 2 including length at birth and gestational age, and Model \n3 including head circumference, length, sex, and all interactions using cross-validation")
+```
+
+Using the root-mean squared error (RSME) to compare the three models, it turns out that my model is actually pretty bad at predicting baby birthweights using the all the variables I included.
+
+## More about problem 3
 
 ```{r}
 # central park weather dataset, getting rid of Waiki and Wtaerhole
