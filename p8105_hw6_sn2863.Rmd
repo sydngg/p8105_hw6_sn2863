@@ -265,29 +265,27 @@ weather_df =
     tmin = tmin / 10,
     tmax = tmax / 10) %>%
   select(name, id, everything())
-
-boot_sample = function(df) {
-  sample_frac(df, replace = TRUE)
-}
-
-n_samples = 5000
-boot_straps = tibble(
-  strap_number = 1:n_samples,
-  strap_sample = rerun(n_samples, boot_sample(weather_df))
-  )
 ```
 
 A simple linear regression with `tmax` as the outcome and `tmin` as the predictor.
 
 ```{r eval=FALSE}
+#from lecture notes
 bootstrap_results <-
-  boot_straps %>%
+  weather_df %>%
+  bootstrap(n = 5000) %>%
   mutate(
-    models = map(strap_sample, ~lm(tmax ~ tmin, data = .x)),
+    models = map(strap, ~glm(tmax ~ tmin, family = gaussian, data = .x)),
     results = map(models, broom::tidy())
   ) %>%
-  select(-strap_sample, -models) %>%
+  select(results) %>%
   unnest(results)
+
+bootstrap_results %>%
+  group_by(term) %>%
+  summarize(boot_se = sd(estimate), #change these when you get results :(
+            CI_lower = quantile(estimate, 0.025),
+            CI_upper = quantile(estimate, 0.975))
 ```
 
 
