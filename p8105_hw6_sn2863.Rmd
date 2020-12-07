@@ -171,7 +171,7 @@ my_pred %>%
 ```
 
 
-#### Model including length at birth and gestational age
+#### Model 2: Model including length at birth and gestational age
 ```{r}
 model2 <- glm(bwt ~ blength + gaweeks,
     data = birthweight_df,
@@ -188,7 +188,7 @@ model2 %>%
 ```
 
 
-#### Modeling including head circumference, length, sex, and all interactions (including the three-way interaction) 
+#### Model 3: Modeling including head circumference, length, sex, and all interactions (including the three-way interaction) 
 
 ```{r}
 model3 <- glm(bwt ~ bhead*blength*babysex,
@@ -249,7 +249,7 @@ crossval_df %>%
     caption = "Comparing my model, Model 2 including length at birth and gestational age, and Model \n3 including head circumference, length, sex, and all interactions using cross-validation")
 ```
 
-Using the root-mean squared error (RSME) to compare the three models, it turns out that my model is actually pretty bad at predicting baby birthweights using the all the variables I included.
+Using the root-mean squared error (RSME) to compare the three models, it turns out that my model is actually pretty bad at predicting baby birthweights using the all the variables I included. Model 3 including baby head circumference, length, sex, and all interactions is the best model for prediction, whereas Model 2 including length at birth and gestational age is a close second.
 
 ## More about problem 3
 
