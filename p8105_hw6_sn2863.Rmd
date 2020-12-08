@@ -251,7 +251,7 @@ crossval_df %>%
 
 Using the root-mean squared error (RSME) to compare the three models, it turns out that my model is actually pretty bad at predicting baby birthweights using the all the variables I included. Model 3 including baby head circumference, length, sex, and all interactions is the best model for prediction, whereas Model 2 including length at birth and gestational age is a close second.
 
-## More about problem 3
+## Problem 3
 
 ```{r message=FALSE}
 weather_df = 
@@ -292,21 +292,13 @@ results_df <-
 CI_df <-
   bootstrap_results %>%
   group_by(.id) %>%
-  summarize(CI_lower = quantile(estimate, 0.025),
+  summarize(CI_lower = quantile(estimate, 0.025), 
+            # question, how can I get the quantiles for log(b0+b1)?
             CI_upper = quantile(estimate, 0.975))
 
+results_df %>%
+  left_join(CI_df, by = ".id")
+
 
 ```
-
-
-```{r}
-# central park weather dataset, getting rid of Waiki and Wtaerhole
-# max temp and min temp scatterplot, we are interested in the r^2
-
-# log(beta0*beta1)
-# fit a model using the data and compute the adjusted r^2 using broom::glance()
-# then use broom::tidy() to get all the coefficients to be able to multiply them
-# AFTER you get the process, use bootstrapping
-```
-
 
