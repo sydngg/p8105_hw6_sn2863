@@ -253,7 +253,7 @@ Using the root-mean squared error (RSME) to compare the three models, it turns o
 
 ## More about problem 3
 
-```{r}
+```{r message=FALSE}
 weather_df = 
   rnoaa::meteo_pull_monitors(
     c("USW00094728"),
@@ -269,23 +269,33 @@ weather_df =
 
 A simple linear regression with `tmax` as the outcome and `tmin` as the predictor.
 
-```{r eval=FALSE}
-#from lecture notes
+```{r message=FALSE}
 bootstrap_results <-
   weather_df %>%
-  bootstrap(n = 5000) %>%
+  bootstrap(n = 50) %>%
   mutate(
-    models = map(strap, ~glm(tmax ~ tmin, family = gaussian, data = .x)),
-    results = map(models, broom::tidy())
+    models = map(strap, ~lm(tmax ~ tmin, data = .x)),
+    results = map(models, broom::tidy),
+    diagnostics = map(models, broom::glance)
   ) %>%
-  select(results) %>%
+  unnest(diagnostics) %>%
+  select(.id, results, r.squared) %>%
   unnest(results)
 
-bootstrap_results %>%
-  group_by(term) %>%
-  summarize(boot_se = sd(estimate), #change these when you get results :(
-            CI_lower = quantile(estimate, 0.025),
+results_df <-
+  bootstrap_results %>%
+  group_by(.id, r.squared) %>%
+  summarize(
+    log_b0b1 = log(sum(estimate))
+  )
+
+CI_df <-
+  bootstrap_results %>%
+  group_by(.id) %>%
+  summarize(CI_lower = quantile(estimate, 0.025),
             CI_upper = quantile(estimate, 0.975))
+
+
 ```
 
 
