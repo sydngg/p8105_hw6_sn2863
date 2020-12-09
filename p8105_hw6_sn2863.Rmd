@@ -297,5 +297,5 @@ CI_upper_r2 <- quantile(results_df$r.squared, 0.975)
 
 Using the 5000 bootstrap estimates, we obtain the 95% confidence intervals for the r-squared and log(beta0+beta1):
 
-* We are 95% confident that the true r-squared lies between `r round(CI_lower_r2,3)` and `r round(CI_upper_r2,3)`.
-* We re 95% confident that the true value for log(beta0+beta1) lies between `r round(CI_lower,3)` and `r round(CI_upper,3)`.
+* We are 95% confident that the true r-squared describing the variability in max temperature explained by minimum temperature using our regression model lies between **`r round(CI_lower_r2,3)` and `r round(CI_upper_r2,3)`**.
+* We re 95% confident that the true log(beta0+beta1) for the natural log for max temperatures lies between **`r round(CI_lower,3)` and `r round(CI_upper,3)`**.
