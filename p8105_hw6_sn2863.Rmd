@@ -272,7 +272,7 @@ A simple linear regression with `tmax` as the outcome and `tmin` as the predicto
 ```{r message=FALSE}
 bootstrap_results <-
   weather_df %>%
-  bootstrap(n = 50) %>%
+  bootstrap(n = 5000) %>%
   mutate(
     models = map(strap, ~lm(tmax ~ tmin, data = .x)),
     results = map(models, broom::tidy),
@@ -289,16 +289,13 @@ results_df <-
     log_b0b1 = log(sum(estimate))
   )
 
-CI_df <-
-  bootstrap_results %>%
-  group_by(.id) %>%
-  summarize(CI_lower = quantile(estimate, 0.025), 
-            # question, how can I get the quantiles for log(b0+b1)?
-            CI_upper = quantile(estimate, 0.975))
-
-results_df %>%
-  left_join(CI_df, by = ".id")
-
-
+CI_lower <- quantile(results_df$log_b0b1, 0.025)
+CI_upper <- quantile(results_df$log_b0b1, 0.975)
+CI_lower_r2 <- quantile(results_df$r.squared, 0.025)
+CI_upper_r2 <- quantile(results_df$r.squared, 0.975)
 ```
 
+Using the 5000 bootstrap estimates, we obtain the 95% confidence intervals for the r-squared and log(beta0+beta1):
+
+* We are 95% confident that the true r-squared lies between `r round(CI_lower_r2,3)` and `r round(CI_upper_r2,3)`.
+* We re 95% confident that the true value for log(beta0+beta1) lies between `r round(CI_lower,3)` and `r round(CI_upper,3)`.
